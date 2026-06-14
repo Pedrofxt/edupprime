@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  aluno
+  professor
+  admin
+}
+
+enum Plan {
+  gratis
+  premium
+}
+
+enum CourseLevel {
+  iniciante
+  intermediario
+  avancado
+}
+
+enum PaymentStatus {
+  pending
+  approved
+  cancelled
+  failed
+}
+
+model User {
+  id            Int          @id @default(autoincrement())
+  nome          String
+  sobrenome     String?
+  email         String       @unique
+  senha         String
+  foto          String?
+  telefone      String?
+  cpf           String?      @unique
+  tipo_usuario  UserType     @default(aluno)
+  plano         Plan         @default(gratis)
+  status        Boolean      @default(true)
+  data_cadastro DateTime     @default(now())
+  ultimo_login  DateTime?
+
+  enrollments   Enrollment[]
+  payments      Payment[]
+  certificates  Certificate[]
+  progresses    Progress[]
+  messages      AIMessage[]
+  notifications Notification[]
+}
+
+model Course {
+  id          Int       @id @default(autoincrement())
+  titulo      String
+  descricao   String
+  categoria   String
+  imagem      String?
+  banner      String?
+  nivel       CourseLevel @default(iniciante)
+  duracao     Int?
+  slug        String    @unique
+  status      Boolean   @default(true)
+
+  modules     Module[]
+  enrollments Enrollment[]
+  certificates Certificate[]
+}
+
+model Module {
+  id        Int      @id @default(autoincrement())
+  titulo    String
+  descricao String?
+  ordem     Int      @default(0)
+  curso     Course   @relation(fields: [cursoId], references: [id])
+  cursoId   Int
+  lessons   Lesson[]
+}
+
+model Lesson {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descricao   String?
+  duracao     Int?
+  ordem       Int      @default(0)
+  content     String?
+  module      Module   @relation(fields: [moduleId], references: [id])
+  moduleId    Int
+  video       Video?
+  quizzes     Quiz[]
+  progresses  Progress[]
+}
+
+model Video {
+  id        Int     @id @default(autoincrement())
+  titulo    String
+  descricao String?
+  duracao   Int?
+  url       String
+  thumbnail String?
+  provider  String?
+  lesson    Lesson? @relation(fields: [lessonId], references: [id])
+  lessonId  Int?
+}
+
+model Quiz {
+  id        Int       @id @default(autoincrement())
+  titulo    String
+  lesson    Lesson    @relation(fields: [lessonId], references: [id])
+  lessonId  Int
+  questions Question[]
+}
+
+model Question {
+  id       Int      @id @default(autoincrement())
+  enunciado String
+  tipo     String
+  quiz     Quiz     @relation(fields: [quizId], references: [id])
+  quizId   Int
+  answers  Answer[]
+}
+
+model Answer {
+  id         Int     @id @default(autoincrement())
+  texto      String
+  correto    Boolean @default(false)
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int
+}
+
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  porcentagem Float  @default(0)
+  inscritoEm DateTime @default(now())
+  planoAcesso Plan    @default(gratis)
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  usuario     User          @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
+  valor       Float
+  status      PaymentStatus @default(pending)
+  metodo      String
+  data_pagamento DateTime?
+  referencia  String?
+}
+
+model Certificate {
+  id               Int      @id @default(autoincrement())
+  nome_aluno       String
+  curso            String
+  data             DateTime @default(now())
+  codigo_validacao String   @unique
+  qr_code_url      String?
+  usuario          User?    @relation(fields: [usuarioId], references: [id])
+  usuarioId        Int?
+}
+
+model Progress {
+  id           Int      @id @default(autoincrement())
+  porcentagem  Float    @default(0)
+  ultima_aula  Int?
+  tempo_assistido Int?  
+  usuario      User     @relation(fields: [usuarioId], references: [id])
+  usuarioId    Int
+  curso        Course?  @relation(fields: [cursoId], references: [id])
+  cursoId      Int?
+  aula         Lesson?  @relation(fields: [aulaId], references: [id])
+  aulaId       Int?
+}
+
+model AIMessage {
+  id        Int      @id @default(autoincrement())
+  usuario   User     @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  role      String
+  content   String
+  criadoEm  DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  usuario   User     @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  title     String
+  body      String
+  lida      Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+}
+
+model Subscription {
+  id          Int      @id @default(autoincrement())
+  usuario     User     @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
+  ativo       Boolean  @default(false)
+  metodo      String
+  inicio      DateTime?
+  termino     DateTime?
+}
